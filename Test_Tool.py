@@ -19,7 +19,6 @@ import argparse
 import sys
 import os
 import json
-#import sshCommands
 from datetime import datetime
 import time
 
@@ -27,7 +26,6 @@ port =22
 username ='root'
 password = ' '
 ip = ' '
-#CDSN = ' '
 connectedSTB = ' ' 
 ssh = paramiko.SSHClient()
 noSetting = 'Error:key'
@@ -58,7 +56,6 @@ class stb:
         print('STB: ' + self.CDSN + ' - Settings saved: ' + self.saved)
 
 s1 = stb('00000000', 'false')
-
 
 def get_args():
     reporting_parser = argparse.ArgumentParser(description='To set the reporting settings on a STB', epilog='for additional help contact James McArthur')
