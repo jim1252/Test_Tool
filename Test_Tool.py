@@ -20,6 +20,7 @@ import sys
 import os
 import json
 from datetime import datetime
+import ipaddress
 import time
 
 port =22
@@ -59,7 +60,8 @@ s1 = stb('00000000', 'false')
 
 def get_args():
     reporting_parser = argparse.ArgumentParser(description='To set the reporting settings on a STB', epilog='for additional help contact James McArthur')
-    reporting_parser.add_argument('ip', action='store', help='IP Address of the STB to Update (Required)')
+    #reporting_parser.add_argument('required', action='store_true', help='IP Address of the STB to Update (Required)')
+    reporting_parser.add_argument('-ip', help='IP Address of the STB to Update, -ip ipaddr')
     reporting_parser.add_argument('-rf_connection', action='store_true',
                                   help="simulate disconnection of RF feed.  ")
     reporting_parser.add_argument('-erlang_Connect', action='store_true',
@@ -687,7 +689,6 @@ def readmySTBsFile():  #read mySTBs json file shows user the settings values and
         with open("mySTBs.json", "r", encoding='UTF-8') as read_file:
             mySTBs.update (json.load(read_file))
             if args.debug:
-                #debug = True
                 print('STB details read from file /n', mySTBs)
             
     except FileNotFoundError: # only used if file has not yet been created
@@ -741,7 +742,6 @@ def readDefaultFile():  #read settings json file shows user the settings values 
 
 def updateUserSettings(): # uses settings dict stbPrimary and sends them to the STB
     print (defaultSettings)
-    #print (defaultSettings)
     primarySet = defaultSettings['updateDelay']
     sshCmd("""settings_cli set "tungsten.ams.updateDelay"%s """ % primarySet)
     primarySet = defaultSettings['appConfigReportDelay']
@@ -764,7 +764,6 @@ def updateUserSettings(): # uses settings dict stbPrimary and sends them to the 
 def sendErlangSetup():
     print('Sending commands to set STB to ejabbered Server')
     erlangSQLite()
-    # erlangJid = """sqlite3 /mnt/ffs/settings/active.db 'update active_table set value = "trustedJids=remotedvr@cobalt.pace.com,remotedvr@elements-dev.xyz,remotedvr@elements.commscope.com,automation2.0@elements-dev.xyz,scripts@elements-dev.xyz,human@elements-dev.xyz", modified = "true" where key = "tungsten.provisioning.xmppConfiguration" ' """
     command = """sqlite3 /mnt/ffs/settings/active.db 'update active_table set value = "trustedJids=remotedvr@cobalt.pace.com,remotedvr@elements-dev.xyz,remotedvr@xmpp.connectedhomesolutions.net,remotedvr@elements.commscope.com,scripts@elements-dev.xyz,human@elements-dev.xyz,automation2.0@elements-dev.xyz,remotedvr@xmpp.connectedhomesolutions.net,automation2.0@xmpp.connectedhomesolutions.net,scripts@xmpp.connectedhomesolutions.net,human@xmpp.connectedhomesolutions.net,foxtel_automation@managed.dev-xmpp.foxtel.com.au,foxtel_automation@xmpp.thomasholtdrive.com", modified = "true" where key = "tungsten.provisioning.xmppConfiguration";' """
     sshCmd(erlangSQLite)
     sshCmd(command)
@@ -784,9 +783,44 @@ def erlangSQLite():
 
 def main():
     print('main running')
+    readmySTBsFile()
+    readDefaultFile()
+    args = get_args()
+    
+    myIPs = []
+    print("STB's already saved")
+    for x, obj in mySTBs.items():
+        print(x, 'IP: ', end=" ")
+        print(mySTBs[x]['IP'])
+        myIPs.append(mySTBs[x]['IP'])
+        if args.debug:
+            print(myIPs)
+
     args = get_args()
     global ip
-    ip = args.ip
+
+    if args.ip is None:
+        print('IP not set at arg parse')
+        
+        while True:
+            try:
+                value = input('Enter IP of STB: ')
+                if ipaddress.ip_address(value):
+                    print("Valid IP address")
+                    break
+
+            except ValueError:
+                # If the input is not a valid IP Address, cvatch the exception and print an error message
+                print("Invalid IP address")
+                continue    
+        
+        ip = value
+
+    else:
+        
+        ip = args.ip
+        if args.debug:
+            print ('Global IP set as: ', ip)
     details = args.details
     read = args.read
     reboot = args.reboot
@@ -807,8 +841,7 @@ def main():
     elif details == 1:  
         sshConnection(ip)
         getSTBdetails()
-        #print('Got')
-        
+                
     elif rf_connection == 1:
         print('RF Connected')
         rf_feed()
@@ -821,8 +854,8 @@ def main():
 
     else:
         print('open')
-        readmySTBsFile()
-        readDefaultFile()
+        #readmySTBsFile()
+        #readDefaultFile()
         sshConnection(ip)
         getSTBdetails()
         readSettings('settings_cli get "tungsten.standby.rebootCountSinceFSR"')
@@ -1222,8 +1255,8 @@ def main():
                                     close()
 
                             elif x == '14':
-                                print('List of Foxtel EPG channels')
-                                sshSQLCommand("""sqlite3 -column -header -separator $'\t' /tmp/cache.db "select distinct a.ContentID_Service, a.ServiceName, a.brand as 'Channel_Brand_Name', a.ChanNum, b.RelatedServiceType as Type, c.value as Tag from service_list a inner join related_channel_list b on (a.ContentID_Service=b.RelatedChannelId) inner join ServiceCustomFields c on (a.ContentID_Service=c.serviceId) where c.key='ChannelTag' order by ChanNum asc" """)
+                                print('List all EPG channels')
+                                sshSQLCommand("""sqlite3 -column -header -separator $'\t' /tmp/cache.db "select distinct a.ContentID_Service, a.ServiceName, a.brand as 'Channel_Brand_Name', a.ChanNum, b.value as Tag from service_list a inner join ServiceCustomFields b on (a.ContentID_Service=b.serviceId) where b.key='ChannelTag' order by ChanNum asc" """)
 
                             elif x == '15':
                                 print('Where Next event parental rating > current event')

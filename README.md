@@ -12,3 +12,5 @@ python -m venv virt
 
 Dependancies:
 pip install paramiko
+? pip install paramiko-expect
+? pip install git+https://github.com/fgimian/paramiko-expect.git
