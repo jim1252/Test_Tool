@@ -988,6 +988,7 @@ def main():
                  23 - Team Link Events
                  24 - Main Events
                  25 - Age restricted content on now
+                 26 - PASH tag searches
                  
                  30 - Custom Field with channel filter
                  
@@ -1313,6 +1314,47 @@ def main():
                                 print ('Assets that are on Now for: ' + rating)
                                 sshSQLCommand("""sqlite3 -column -header -separator $'\t' /tmp/cache.db "select a.EvName as 'Program_Title       ', (case when a.Parental='4' then 'G' when a.Parental='5' then 'PG' when a.Parental='6' then 'M' when a.Parental='7' then 'MA15+' when a.Parental='9' then 'R18' END) as Rating, b.ChanNum, datetime(a.start,'unixepoch','localtime') as StartTime, datetime(a.start + a.duration, 'unixepoch', 'localtime') as EndTime from event_list a inner join service_list b on (a.ContentID_Service=b.ContentID_Service) where StartTime < Endtime and datetime('now', 'localtime') between StartTime And EndTime and a.Parental = '%s' order by ChanNum;" """"" % rating)
                                 continue
+
+                            elif x == '26': # PASH tag searchs
+                                try:
+                                    while True:
+                                        options = """\n      Search for PASH tagged events     \n                            
+                 1 - Search by channel number
+                 2 - Text search
+                 q - quit
+                 b - back                 """
+                                        print(options)
+                                        x = input('>: ')
+
+                                        if x == '1':
+                                            print('Find PASH tagged event by channel number ')
+                                            chNum = input('Enter channel : ')
+                                            print('Pash tag events for channel:' + chNum)
+                                            sshSQLCommand(f"""sqlite3 -column -header -separator $'\t' /tmp/cache.db "Select b.ChanNum,  a.EvName, datetime(a.start, 'unixepoch', 'localtime') as StartTime, a.contentProviderID, a.uniqueContentID from event_list a inner join service_list b on (a.ContentID_Service = b.ContentID_Service) where datetime(a.start + a.duration, 'unixepoch', 'localtime') > datetime('now', 'localtime') and customFields like '%PASH%' and chanNum = '{chNum}' order by StartTime LIMIT 30;" """)
+                                            continue
+
+                                        elif x == '2':
+                                            print('This is a wildcard search to find assets containing PASH tags. Example Pash tag terms; \n NEW EPISODE \n MADE FOR FOXTEL \n Ultra HD 4K \n Live in Ultra HD 4K \n LIVE \n EXPRESS \n FIRST ON  ')
+                                            pTag = input('Enter PASH tag term, the whole term is not needed just the first few letters: ')
+                                            print('Pash tag events for the term:' + pTag)
+                                            sshSQLCommand(f"""sqlite3 -column -header -separator $'\t' /tmp/cache.db "Select b.ChanNum,  a.EvName as 'Programme_Title          ', datetime(a.start, 'unixepoch', 'localtime') as StartTime, a.contentProviderID, a.uniqueContentID from event_list a inner join service_list b on (a.ContentID_Service = b.ContentID_Service) where datetime(a.start + a.duration, 'unixepoch', 'localtime') > datetime('now', 'localtime') and customFields like '%PASH%' and customFields like '%{pTag}%' order by StartTime LIMIT 30;" """)
+                                            continue
+                                                               
+                                        elif x == 'q':
+                                            autoWrite()
+                                            close()
+                                            sys.exit(0)
+
+                                        elif x == 'b':
+                                            break
+
+                                        else:
+                                            print('WARNING: {} is an unknown option. Try again'.format(x))
+                                        continue
+
+                                except KeyboardInterrupt:
+                                    print('CTRL+C Pressed. Shutting Down')
+                                    close()
 
                             elif x == '30':
                                 custom = input('Enter Custom field search criteria "TV_NO_EPS" "MOVIE": ')
